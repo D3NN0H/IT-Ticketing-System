@@ -12,6 +12,7 @@ app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
 // Routes
+app.use('/api/auth', require('./routes/auth'));
 app.use('/api/tickets', require('./routes/tickets'));
 app.use('/api/gmail', require('./routes/gmail'));
 app.use('/api/whatsapp', require('./routes/whatsapp'));

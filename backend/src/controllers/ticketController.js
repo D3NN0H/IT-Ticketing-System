@@ -3,26 +3,39 @@ const db = require('../config/database');
 exports.getAllTickets = async (req, res) => {
   try {
     const { status, priority, search } = req.query;
+    const userId = req.user.id;
+    const userRole = req.user.role;
     
-    let query = 'SELECT * FROM tickets WHERE 1=1';
+    let query = `
+      SELECT t.*, u.name as requester_name, u.email as requester_email, u.department as requester_department
+      FROM tickets t
+      JOIN users u ON t.user_id = u.id
+      WHERE 1=1
+    `;
     const params = [];
+    
+    // If not admin, only show user's own tickets
+    if (userRole !== 'admin') {
+      params.push(userId);
+      query += ` AND t.user_id = $${params.length}`;
+    }
     
     if (status) {
       params.push(status);
-      query += ` AND status = $${params.length}`;
+      query += ` AND t.status = $${params.length}`;
     }
     
     if (priority) {
       params.push(priority);
-      query += ` AND priority = $${params.length}`;
+      query += ` AND t.priority = $${params.length}`;
     }
     
     if (search) {
       params.push(`%${search}%`);
-      query += ` AND (subject ILIKE $${params.length} OR description ILIKE $${params.length} OR requester_email ILIKE $${params.length})`;
+      query += ` AND (t.subject ILIKE $${params.length} OR t.description ILIKE $${params.length})`;
     }
     
-    query += ' ORDER BY created_at DESC';
+    query += ' ORDER BY t.created_at DESC';
     
     const result = await db.query(query, params);
     res.json(result.rows);
@@ -35,7 +48,12 @@ exports.getAllTickets = async (req, res) => {
 exports.getTicket = async (req, res) => {
   try {
     const { id } = req.params;
-    const result = await db.query('SELECT * FROM tickets WHERE id = $1', [id]);
+    const result = await db.query(`
+      SELECT t.*, u.name as requester_name, u.email as requester_email, u.department as requester_department
+      FROM tickets t
+      JOIN users u ON t.user_id = u.id
+      WHERE t.id = $1
+    `, [id]);
     
     if (result.rows.length === 0) {
       return res.status(404).json({ error: 'Ticket not found' });
@@ -50,13 +68,14 @@ exports.getTicket = async (req, res) => {
 
 exports.createTicket = async (req, res) => {
   try {
-    const { subject, description, priority, source, requester_email, requester_name } = req.body;
+    const { subject, description, priority } = req.body;
+    const userId = req.user.id;
     
     const result = await db.query(
-      `INSERT INTO tickets (subject, description, priority, source, requester_email, requester_name, status)
-       VALUES ($1, $2, $3, $4, $5, $6, 'open')
+      `INSERT INTO tickets (subject, description, priority, source, user_id, status)
+       VALUES ($1, $2, $3, 'manual', $4, 'open')
        RETURNING *`,
-      [subject, description, priority, source, requester_email, requester_name]
+      [subject, description, priority || 'medium', userId]
     );
     
     res.status(201).json(result.rows[0]);
@@ -113,7 +132,8 @@ exports.deleteTicket = async (req, res) => {
 exports.addComment = async (req, res) => {
   try {
     const { id } = req.params;
-    const { author, text } = req.body;
+    const { text } = req.body;
+    const author = req.user.name;
     
     const result = await db.query(
       'INSERT INTO comments (ticket_id, author, text) VALUES ($1, $2, $3) RETURNING *',

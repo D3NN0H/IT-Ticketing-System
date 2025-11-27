@@ -1,0 +1,2 @@
+GET http://localhost:5000/api/tickets
+Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6NCwiZW1haWwiOiJ0ZXN0QGNvbXBhbnkuY29tIiwicm9sZSI6InVzZXIiLCJpYXQiOjE3NjQyMzI3NjEsImV4cCI6MTc2NDMxOTE2MX0.D8Zhdpeoz-6UoSODxxWe6qJwSvHSaZvVpzZWn2eo6uc
